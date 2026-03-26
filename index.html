@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <title>Contrôle Moteur ESP32</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding-top: 50px; }
+        #progress-container { width: 80%; background: #ddd; margin: 20px auto; display: none; border-radius: 10px; overflow: hidden; }
+        #progress-bar { width: 0%; height: 20px; background: #4CAF50; transition: width 0.1s linear; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+        button:disabled { cursor: not-allowed; background: #ccc; }
+        input { padding: 8px; width: 60px; margin-bottom: 10px; }
+        .motor { display: inline-block; padding: 20px; border: 1px solid #ccc; border-radius: 10px; background: #ccc; }
+    </style>
+</head>
+<body>
+    <div class="motor">
+        <h1>Contrôle du Moteur</h1>
+    
+        <div>
+            <label for="nbr">Nombre de tours : </label>
+            <input type="number" id="nbr" value="1" min="1" max="8">
+        </div>
+
+        <button id="btnRun" onclick="lancerMoteur()">Lancer la rotation</button>
+
+        <div id="progress-container">
+            <div id="progress-bar"></div>
+        </div>
+        <p id="status">Prêt</p>
+    </div>
+
+    <script>
+        let timer;
+        const msParTour = 2000;
+
+        async function lancerMoteur() {
+            const nbr = document.getElementById('nbr').value;
+            const totalMs = nbr * msParTour;
+
+            const res = await fetch('/lancer', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ nbr: nbr })
+            });
+
+            if (res.ok) {
+                demarrerBarre(totalMs);
+            }
+        }
+
+        function demarrerBarre(totalMs) {
+            const bar = document.getElementById('progress-bar');
+            const container = document.getElementById('progress-container');
+            container.style.display = 'block';
+            let start = Date.now();
+
+            timer = setInterval(() => {
+                let diff = Date.now() - start;
+                let pourcent = (diff / totalMs) * 100;
+                
+                if (pourcent >= 100) {
+                    bar.style.width = '100%';
+                    clearInterval(timer);
+                } else {
+                    bar.style.width = pourcent + '%';
+                }
+            }, 100);
+        }
+
+        // Vérification de l'état du serveur (Polling)
+        setInterval(async () => {
+            const res = await fetch('/commande.json');
+            const data = await res.json();
+            const isRunning = (data.action === "run");
+            
+            document.getElementById('btnRun').disabled = isRunning;
+            document.getElementById('nbr').disabled = isRunning;
+            document.getElementById('status').innerText = isRunning ? "Moteur en rotation..." : "Prêt";
+            
+            if (!isRunning) {
+                document.getElementById('progress-container').style.display = 'none';
+                document.getElementById('progress-bar').style.width = '0%';
+                clearInterval(timer);
+            }
+        }, 1000);
+    </script>
+</body>
+</html>
