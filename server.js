@@ -3,7 +3,7 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(express.json());
-app.use(express.static(__dirname)); // Pour servir le fichier HTML
+app.use(express.urlencoded({ extended: true }));
 
 // État initial
 let motorStatus = {
@@ -12,12 +12,11 @@ let motorStatus = {
     nbr: 1
 };
 
-// L'ESP32 appelle cette route pour savoir quoi faire
+// Routes
 app.get('/commande.json', (req, res) => {
     res.json(motorStatus);
 });
 
-// L'interface Web appelle cette route quand on clique sur le bouton
 app.post('/lancer', (req, res) => {
     if (motorStatus.action === "idle") {
         motorStatus.action = "run";
@@ -28,13 +27,15 @@ app.post('/lancer', (req, res) => {
     }
 });
 
-// L'ESP32 appelle cette route quand il a fini le travail
 app.post('/fini', (req, res) => {
     motorStatus.action = "idle";
     console.log("Rotation terminée, interface déverrouillée.");
     res.json({ status: "ok" });
 });
 
+// ⚠️ Place le static APRÈS les routes
+app.use(express.static(__dirname));
+
 app.listen(port, () => {
-    console.log(`Serveur lancé sur http://localhost:${port}`);
+    console.log(`Serveur lancé sur port ${port}`);
 });
