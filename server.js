@@ -36,9 +36,6 @@ app.post('/fini', (req, res) => {
     res.json({ status: "ok" });
 });
 
-app.listen(port, () => {
-    console.log(`Serveur lancé sur http://localhost:${port}`);
-});
 // Healthcheck Render
 app.get('/healthz', (req, res) => {
     res.status(200).json({ status: 'ok' });
