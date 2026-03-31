@@ -1,9 +1,10 @@
 const express = require('express');
 const app = express();
-const port = process.env.PORT;
+const port = process.env.PORT || 3000;
+const host = '0.0.0.0';
 
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.static(__dirname)); // Pour servir le fichier HTML
 
 // État initial
 let motorStatus = {
@@ -12,11 +13,12 @@ let motorStatus = {
     nbr: 1
 };
 
-// Routes
+// L'ESP32 appelle cette route pour savoir quoi faire
 app.get('/commande.json', (req, res) => {
     res.json(motorStatus);
 });
 
+// L'interface Web appelle cette route quand on clique sur le bouton
 app.post('/lancer', (req, res) => {
     if (motorStatus.action === "idle") {
         motorStatus.action = "run";
@@ -27,15 +29,30 @@ app.post('/lancer', (req, res) => {
     }
 });
 
+// L'ESP32 appelle cette route quand il a fini le travail
 app.post('/fini', (req, res) => {
     motorStatus.action = "idle";
     console.log("Rotation terminée, interface déverrouillée.");
     res.json({ status: "ok" });
 });
 
-// ⚠️ Place le static APRÈS les routes
-app.use(express.static(__dirname));
-
 app.listen(port, () => {
-    console.log(`Serveur lancé sur port ${port}`);
+    console.log(`Serveur lancé sur http://localhost:${port}`);
+});
+// Healthcheck Render
+app.get('/healthz', (req, res) => {
+    res.status(200).json({ status: 'ok' });
+});
+
+const server = app.listen(port, host, (err) => {
+    if (err) {
+        console.error("Echec du demarrage du serveur:", err);
+        process.exit(1);
+    }
+    console.log(`Serveur lance sur ${host}:${port}`);
+});
+
+server.on('error', (err) => {
+    console.error("Erreur serveur:", err);
+    process.exit(1);
 });
